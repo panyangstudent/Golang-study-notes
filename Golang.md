@@ -38,6 +38,27 @@ http://play.golang.org -----可以分享代码给别人的平台
         return x + y
     }
     ```
+    闭包是可以包含自由变量的代码块，这些变量不在这个代码块内或者任何全局上下文中定义，而是在定义代码块的环境中定义。要执行的代码块为自由变量提供绑定的计算环境（作用域）；
+    ```golang
+    package main
+    import "fmt"
+    func main() {
+        var j int =5 
+        a := func() (func()){
+            var i int =10
+            return func() {
+                fmt.Println("1,j:%d\n",i,j)
+            }
+        }()
+        a()
+        j* =2 
+        a()
+    }
+    程序输出：
+    i, j: 10, 5
+    i, j: 10, 10
+    ```
+
 10. 并发机制    
     通过在函数调用前使用关键字go，我们既可以让该函数已goroutine方式执行，goroutine是一种比线程更加轻盈的，更省资源的协程。Golang语言通过系统的线程来多路派遣这些函数的执行，使得每个用go关键字执行的函数可以运行成为一个单位协程。当一个协程阻塞的时候，调度器就会自动把其他协程安排到另外的线程中去执行，从而实现了程序无等待并行化运行。而且调度的开销非常小，一颗CPU调度的规模不下于每秒百万次，这使得我们能够创建大量的goroutine，从而可以很轻松地编写高并发程序，达到我们想要的目的。    
     <p>---------------------------------------------------------------<p>
@@ -385,8 +406,149 @@ func main() {
     ```
     11.2 删除    
     >Go语言提供了一个内置函数delete(),用于删除容器内的元素。```delete(myMap, "1234")```。上面的代码将从myMap中删除键为“1234”的键值对。如果“1234”这个键不存在，那么这个调用将什么都不发生，也不会有什么副作用。但是如果传入的map变量的值是nil，该调用将导致程序抛出异常（panic）。
+12. 流程控制    
+    >go语言支持以下几种流程控制语句：    
+    <ul>
+        <li>条件语句，对应的为if，else和else if；
+        <li>选择语句，对应的关键字为switch，case和select
+        <li>循环语句，对应的关键字为for和range
+        <li>跳转语句，对应的关键字为goto
+    </ul>
+    条件语句中：在有返回值的函数中，不允许将最终的return语句包含在if...else...结构中       
 
+    选择语句中：与C语言的规则相反，go语言不需要用break来明确退出一个case。可以不设定switch之后的条件表达式，在此种情况下，整个switch结构与多个if...else...的逻辑作用等同。
+    ```golang
+    switch {
+    case 0 <= Num && Num <= 3:
+        fmt.Printf("0-3")
+    case 4 <= Num && Num <= 6:
+        fmt.Printf("4-6")
+    case 7 <= Num && Num <= 9:
+        fmt.Printf("7-9")
+    }
+    ```
+    循环语句中：for循环与C语言一样，都允许在循环条件中定义和初始化变量，唯一的区别是，Go语言不支持以逗号为间隔的多个赋值语句，必须使用平行赋值的方式来初始化多个变量。同时break可以设置中断某一处的循环。考虑到无限循环的场景，简化写法如下：
+    ```golang
+    //多重赋值
+    a := [] int{1, 2, 3, 4, 5, 6}
+    for i, j := 0, len(a) – 1; i < j; i, j = i + 1, j – 1 {
+        a[i], a[j] = a[j], a[i]
+    }
 
+    //无限循环
+    sum := 0
+    for {
+        sum++
+        if sum > 100 {
+            break
+        }
+    }
+
+    //中断JLoop处的循环
+
+    for j := 0; j < 5; j++ {
+        for i := 0; i < 10; i++ {
+            if i > 5 {
+                break JLoop
+            }
+            fmt.Println(i)
+        }
+
+    }
+    JLoop:
+    // ...
+
+    ```
+13. 不定参数函数   
+    不定参数是指函数传入的参数个数为不定数量。为了做到这一点，首先需要将函数定义为接受不定参数类型：
+    ```golang
+    func myfunc(args ...int){
+        for _,arg :=range args{
+            fmt.Println(arg)
+        }
+    }
+    这单段代码的意思是myfunc()接受不定数量的参数，这些参数的类型全部都是int，所以他可以使用如下的方式来调用
+    myfunc(2, 3, 4)，myfunc(1, 3, 7, 13)。
+    ```
+14. 错误处理error接口     
+    go语言引入了一个关于错误处理的标准模式，即error接口，该接口的定义如下：
+    ```Golang
+    type error Interface{
+        Error() string
+    }
+    ```
+    对于大多数函数，如果要返回错误，大致上都可以定义为如下模式，将error作为多种返回值中的最后一个，但这并非是强制要求：
+    ```Golang
+    func Foo(param int)(n int,err error){
+        //...
+    }
+
+    //调用的时候建议按照如下的方式处理错误情况
+    n,err := Foo(0)
+    if err != nil {
+        //错误处理
+    } else {
+        //使用返回值n
+    }
+    ```
+    使用自定义的error 类型，首先自定义一个用于承载错误信息的类型。
+    ```golang
+    type PathError struct {
+        Op string 
+        Path string 
+        Err error 
+    }
+    如果是这样的话，编译器怎么知道PathError可以当作是一个error来传递呢，关键在于代码实现了Error方法：
+    func (e *PathError) Error() string {
+        return e.Op+" "+e.Path+":"+e.Err.Error()
+    }
+    
+    当suscall.Stat()失败返回err时，将该err包装到一个PathError对象中返回
+    func Stat (name string) (fi FileInfo,err error){
+        var stat syscall.Stat_t
+        err = syscall.Stat(name.&stat)
+        if err != nil{
+            return nil, &PathError{"stat",name,err}
+        }
+        return fileInfoFromStat(&stat, name), nil
+    }
+
+    //如果在处理错误时获取信息，而不满足于打印一句错误信息，那就需要用到类型转换知识了
+    fi, err := os.Stat("a.txt")
+    if err != nil {
+        if e, ok := err.(*os.PathError); ok && e.Err != nil {
+        // 获取PathError类型变量e中的其他信息并处理
+        }
+    }
+    ```
+15. defer     
+    ```golang
+    func CopyFile(dst ,src string)(w intu64,err error){
+        srcFile ，err ：= os.Open(src)
+        if err != nil {
+            return 
+        }
+        defer srcFile.Close()
+        dstFile , err := os.Create(dstFile)
+        if err != nil {
+            return 
+        }
+        defer dstFile.Close()
+        return io.Copy(dstFile,srcFile)
+    }
+    即使其中的Copy()函数抛出异常，Go仍然就保证dstFile和srcFile会被正常关闭。如果一句话干不完的话可以使用defer后加一个匿名函数的做法：
+    defer func () {
+        //做复杂的工作
+    }()
+    ```
+16. Panic和recover     
+    go语言引入了两个内置函数Panic()和recover()以报告和处理运行时错误和程序中的错误
+    ```golang
+    func panic(interface{})
+    func recover() interface{}
+    ```
+    当在一个函数执行过程中调用panic()函数时，正常的函数执行流程将立即终止，但函数中之前使用defer关键字延时执行的语句将正常展开执行，之后该函数将放回到调用函数，并导致逐层向上执行panic流程，直至所属的goroutine中所有正在执行的函数被终止。错误信息将被报告，包括在调用panic()函数时传入的参数，这个过程称为错误处理流程。从panic()的参数类型interface{}我们可以得知，该函数接收任意类型的数据，比如整型、字符串、对象等。调用方法很简单，下面为几个例子：
+    
 
     
 ## 视频课
@@ -403,4 +565,5 @@ func main() {
     3) \\ :一个\   
     4) \" :一个“    
     5) \r : 一个回车   
-5. 
+5. 格式化    
+    使用gofmt来进行格式化：```gofmt -w 文件名```
