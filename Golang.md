@@ -541,16 +541,140 @@ func main() {
         //做复杂的工作
     }()
     ```
-16. Panic和recover     
+16. Panic和recover    
+    >panic      
     go语言引入了两个内置函数Panic()和recover()以报告和处理运行时错误和程序中的错误
     ```golang
     func panic(interface{})
     func recover() interface{}
     ```
     当在一个函数执行过程中调用panic()函数时，正常的函数执行流程将立即终止，但函数中之前使用defer关键字延时执行的语句将正常展开执行，之后该函数将放回到调用函数，并导致逐层向上执行panic流程，直至所属的goroutine中所有正在执行的函数被终止。错误信息将被报告，包括在调用panic()函数时传入的参数，这个过程称为错误处理流程。从panic()的参数类型interface{}我们可以得知，该函数接收任意类型的数据，比如整型、字符串、对象等。调用方法很简单，下面为几个例子：
-    
+    ```golang
+    Panic(404)
+    Panic("network broken")
+    panic(Error("file not exists"))
+    ```
+    >recover   
+    recover()函数用于终止错误处理流程。一般情况下，recover()应该在一个使用defer关键字的函数中执行以有效截取错误处理流程如果没有在发生异常的goroutine中明确调用恢复过程（使用recover关键字），会导致该goroutine所属的进程打印异常信息后直接退出。
 
-    
+## Golang的面向对象
+1. 类型系统         
+类型系统才是一门编程语言的地基。顾名思义类型系统是指一门语言的类型体系结构。
+一个典型的类型系统通常包含如下类型的基本内容：
+<ul>
+    <li>基础类型，如byte，int，bool，float等
+    <li>复合类型，如数组，结构体，指针等
+    <li>可以指向任何对象的类型(any类型)
+    <li>值语义和引用语义
+    <li>面向对象，即所有具备面向对象特征的类型
+    <li>接口
+</ul>
+
+2. 为类型添加方法      
+在go语言中你可以给任意类型(包括内置类型，但不包括指针类型)添加相应的方法,例如：
+```golang
+type integer int 
+func (a integer)Less(b integer) bool{
+    return a<b
+}
+这里我们定义了一个新类型integer，他和int没有本质的区别，只是它为内置的int类型增加了一个新方法Less()。这样实现integer后，就可以让整型像一个普通的类一样使用
+func main() {
+ var a integer = 1
+ if a.Less(2){
+     fmt.Println(a,"Less 2")
+ }
+}
+``` 
+3. Golang中的值语义     
+Go语言中的大多数类型都基于值语义，包括：    
+<ul>
+    <li>基本类型，如byte、int、bool、float32、float64和string等；
+    <li>复合类型，如数组（array）、结构体（struct）和指针（pointer）等。
+</ul>
+Golang语言中的数组和基本类型没有区别，是很纯碎的值类型。例如：
+
+```golang
+var a = [3]int{1,2,3}
+var b = a
+b[1]++
+fmt.Println(a,b)
+
+程序输出：
+[1 2 3] [1 3 3]。
+这表明b=a赋值语句是数组内容的完整复制。要想表达引用，需要用指针：
+
+var a = [3] int{1,2,3}
+var b = &a
+b[1]++
+fmt.Println(a, *b)
+
+该程序的运行结果如下：
+[1 3 3] [1 3 3]
+这表明b=&a赋值语句是数组内容的引用。变量b的类型不是[3]int，而是*[3]int类型。
+```
+4. 特别的四个类型   
+Golang有四个类型看起来像是引用类型：
+<ul>
+    <li>数组切片,指向数组的一个区间
+    <li>map，极其常见的数据结构提供键查询能力
+    <li>channel，执行体之间的通信
+    <li>接口(interface)：对一组满足某个契约的类型的抽象。
+</ul>
+
+5. 结构体   
+golang的结构体只是很普通的复合类型，例如我们要定义一个矩形类型
+
+```golang
+type Rect struct {
+    x, y float64
+    width, height float64
+}
+//r然后我们定义成员方法Area()来计算矩形面积：
+func (r *Rect) Area() float64{
+    return r.width*
+}
+```
+
+6. 初始化    
+定义了Rect结构体之后初始化的方法
+
+    ```golang
+    rect1 := new(Rect)
+    rect2 := &Rect{}
+    rect3 := &Rect{0, 0, 100, 200}
+    rect4 := &Rect{width: 100, height: 200}
+    ```
+
+    在go语言中没进行初始化的变量都会初始化为该类型的零值。在go语言中没有构造函数的概念，对象的创建交由一个全局的创建函数来完成，以NewXXX来命名，表示“构造函数”
+
+    ```golang
+    func NewRect(x, y, width, height float64) *Rect {
+        return &Rect{x, y, width, height}
+    }
+    ```
+
+7. 匿名组合     
+确切的说，go语言也提供了继承，但是采用了组合的方法，所以我们称其为匿名组合
+
+    ```golang
+    type Base struct {
+    Name string
+    }
+    func (base *Base) Foo() { ... }
+    func (base *Base) Bar() { ... }
+
+    type Foo struct {
+        Base
+        ...
+    }
+
+    func (foo *Foo) Bar() {
+        foo.Base.Bar()
+        ...
+    }
+    以上代码定义了一个Base类（实现了Foo()和Bar()两个成员方法），然后定义了一个Foo类，该类从Base类继承并改写了Bar()方法（该方法实现的时候先靠调用基类的Bar()方法）在派生类Foo没有改写基类Base()的成员方法时，相应的方法就被继承了，调用foo.Foo()和调用foo.Base.Foo()效果一致。
+    ```
+
 ## 视频课
 1. Golang的语言特性：
     > 静态编译语言的安全和性能，又达到了动态语言开发维护的高效率。(1)从C语言中继承了很多理念，包括表达式语法，控制结构，基础数据类型，调用参数传值，指针等等，也保留了和C语言一样的编译方式及弱化的指针。(2)引入包的概念。(3)垃圾回收机制。(4)天然并发。(5)吸收了管道通信机制，形成了Golang特有的管道channel，通过管道channel可以实现u 痛的goroutine之间的通信。(6) 函数可以返回多个值。(7) 新的创新，比如切片slice。
@@ -567,3 +691,30 @@ func main() {
     5) \r : 一个回车   
 5. 格式化    
     使用gofmt来进行格式化：```gofmt -w 文件名```
+6. 基本类型转string类型    
+    >方式1 fmt.Sprintf("%参数"，表达式)：   
+    1) 参数需要和表达式的数据类型相匹配       
+    2) fmt.Sprintf()回单会转换后的字符串
+
+    >方式2 使用strconv包的函数
+    ```golang    
+    func ParseBool(str string)(value bool,err Error)//转布尔值
+    func ParseInt(str string,base int,bitSize int)(i int64,err error)//转64位int
+    func ParseFloat(str string，bitSize int)(f float64,err error)//转float64
+    ```
+7. string转基本类型    
+    在将string转成基本数据类型时要确保string类型能够转成有效的数据，比如我们可以把“123”转成一个整数，但是不能吧“hello”转成一个整数，如果这样做，golang会直接将其转成0。
+8. 指针的使用陷阱    
+    值类型都有对应的指针类型，形式为 *数据类型 ，比如 int对应的指针就是*int，float32对应的指针类型就是 * float32 依此类推
+9. 值类型和引用类型    
+    >值类型: 变量直接存储值，内存通常在栈中分配
+
+    >引用类型：变量存储的是一个地址，这个地址对应的空间才真正的存储数据，内存通常在堆上分配，当没有任何变量引用这个地址时，该地址就会有GC来回收。
+10. 运算符注意点     
+    ```a % b = a - a / b * b```   
+    golang的自增自减只能当作一个独立的语言使用，不能这样能使用：b:= a++,b:=a--       
+    Golang的++和--只能写在变量的后面，不能写在变量的前面，即，只有a++和a--没有--a和++a
+11. 源码，反码，补码    
+    >正数的原码，反码，补码都一样    
+    负数的反码=它的原码符号位不变，其他位取反    
+    负数的补码=它的反码+1       
