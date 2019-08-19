@@ -81,6 +81,7 @@ http://play.golang.org -----可以分享代码给别人的平台
     func main() {
         values = [] int{1,2,3,4,5,6,7,8,9}
         resultChan := make(chan int,2)
+        //类型字面量chan int，其中的chan是表示通道类型的关键字，而int则说明了该通道类型的元素类型.make函数除了必须接收这样的类型字面量作为参数，还可以接收一个int类型的参数。后者是可选的，用于表示该通道的容量。所谓通道的容量，就是指通道最多可以缓存多少个元素值。由此，虽然这个参数是int类型的，但是它是不能小于0的。当容量为0时，我们可以称通道为非缓冲通道，也就是不带缓冲的通道。而当容量大于0时，我 们可以称为缓冲通道，也就是带有缓冲的通道。非缓冲通道和缓冲通道有着不同的数据传递方 式
         go sum(values[:len(values)/2],resultChan)
         go sum(values[len(values)/2:],resultChan)
 
@@ -88,6 +89,10 @@ http://play.golang.org -----可以分享代码给别人的平台
         fmt.Println("Result :",sum1,sum2,sum1+sum2)
     }
     ```
+    >一个通道相当于一个先进先出(FIFO)的队列。也就是说，通道中的各个元素值都是严格 地按照发送的顺序排列的，先被发送通道的元素值一定会先被接收。元素值的发送和接收 都需要用到操作符<-。我们也可以叫它接送操作符。一个左尖括号紧接着一个减号形象地 代表了元素值的传输方向。
+    
+    >这里所谓的并发执行，你可以这样认为，多个代码块分别在不同的goroutine之中，并有机会在 同一个时间段内被执行。
+
 11. 反射    
     反射最常用的使用场景是做对象的序列化。例如，Go语言标准库的encoding/json、encoding/xml、encoding/gob、encoding/binary等包就大量依赖于反射功能来实现。
     ```Golang
@@ -556,6 +561,36 @@ func main() {
     ```
     >recover   
     recover()函数用于终止错误处理流程。一般情况下，recover()应该在一个使用defer关键字的函数中执行以有效截取错误处理流程如果没有在发生异常的goroutine中明确调用恢复过程（使用recover关键字），会导致该goroutine所属的进程打印异常信息后直接退出。
+17. 类型转换      
+    类型转换是用来在不同但是互相兼容的类型之间的互相转换的方式，所以当类型不兼容的时候是无法转换的
+    ```golang
+    //string到int
+    value_int,err:=strconv.Atoi(string)
+    //int到string
+    str:=strconv.Itoa(value_int)
+    //string到int64
+    value_int64, err := strconv.ParseInt(string, 10, 64)
+    //int64到string,需注意下面转换规定
+    //FormatInt returns the string representation of i in the given base, for 2 <= base <= 36.
+    //The result uses the lower-case letters 'a' to 'z' for digit values >= 10
+    str:=strconv.FormatInt(value_int64, 10) //FormatInt第二个参数表示进制，10表示十进制
+    //float转string
+    v := 3.1415926535
+    s1 := strconv.FormatFloat(v,"E",-1,32)//float32
+    s2 := strconv.FormatFloat(v,"E",-1,64)//float64
+    //第二个参数可选'f'/'e'/'E'等，含义如下：
+    // 'b' (-ddddp±ddd，二进制指数)
+    // 'e' (-d.dddde±dd，十进制指数)
+    // 'E' (-d.ddddE±dd，十进制指数)
+    // 'f' (-ddd.dddd，没有指数)
+    // 'g' ('e':大指数，'f':其它情况)
+    // 'G' ('E':大指数，'f':其它情况)
+
+    //string转float
+    s := "3.1415926535"
+    v1,err := strconv.ParseFloat(v,32)
+    v2,err := strconv,ParseFloat(v,64)
+    ```
 
 ## Golang的面向对象
 1. 类型系统         
